@@ -1,0 +1,18 @@
+[package]
+name = "pocket-tts-ffi"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "C ABI bindings for pocket-tts"
+keywords.workspace = true
+categories.workspace = true
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+pocket-tts = { path = "../pocket-tts" }
+anyhow.workspace = true
+candle-core.workspace = true

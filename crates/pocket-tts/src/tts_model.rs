@@ -60,6 +60,21 @@ impl TTSModel {
         )
     }
 
+    /// Load a pre-trained TTS model from a local directory.
+    ///
+    /// The directory is expected to contain:
+    /// - `tts_{variant}.safetensors`
+    /// - `tokenizer.model`
+    pub fn load_from_dir<P: AsRef<std::path::Path>>(variant: &str, model_dir: P) -> Result<Self> {
+        Self::load_with_params_from_dir(
+            variant,
+            model_dir,
+            defaults::TEMPERATURE,
+            defaults::LSD_DECODE_STEPS,
+            defaults::EOS_THRESHOLD,
+        )
+    }
+
     /// Load with custom generation parameters
     pub fn load_with_params(
         variant: &str,
@@ -70,6 +85,44 @@ impl TTSModel {
         // Find config file - look relative to the Rust crate, then fall back to Python location
         let config_path = find_config_path(variant)?;
         let config = load_config(&config_path)?;
+
+        Self::from_config(config, temp, lsd_decode_steps, eos_threshold)
+    }
+
+    /// Load with custom generation parameters from a local directory.
+    ///
+    /// The directory is expected to contain:
+    /// - `tts_{variant}.safetensors`
+    /// - `tokenizer.model`
+    pub fn load_with_params_from_dir<P: AsRef<std::path::Path>>(
+        variant: &str,
+        model_dir: P,
+        temp: f32,
+        lsd_decode_steps: usize,
+        eos_threshold: f32,
+    ) -> Result<Self> {
+        let config_path = find_config_path(variant)?;
+        let mut config = load_config(&config_path)?;
+
+        let model_dir = model_dir.as_ref();
+        let weights_path = model_dir.join(format!("tts_{}.safetensors", variant));
+        if !weights_path.exists() {
+            anyhow::bail!(
+                "weights file not found: {}",
+                weights_path.to_string_lossy()
+            );
+        }
+        config.weights_path = Some(weights_path.to_string_lossy().into_owned());
+
+        let tokenizer_path = model_dir.join("tokenizer.model");
+        if !tokenizer_path.exists() {
+            anyhow::bail!(
+                "tokenizer model not found: {}",
+                tokenizer_path.to_string_lossy()
+            );
+        }
+        config.flow_lm.lookup_table.tokenizer_path =
+            tokenizer_path.to_string_lossy().into_owned();
 
         Self::from_config(config, temp, lsd_decode_steps, eos_threshold)
     }
